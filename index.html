@@ -1,0 +1,223 @@
+<!DOCTYPE html>
+<html lang="ru">
+
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Температура воды в Рижском заливе</title>
+    <style>
+        body {
+            font-family: 'Segoe UI', Arial, sans-serif;
+            margin: 0;
+            padding: 20px;
+            color: #333;
+            min-height: 100vh;
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            background:
+                linear-gradient(rgba(255, 255, 255, 0.85), rgba(245, 249, 255, 0.9)),
+                url('https://images.unsplash.com/photo-1507525428034-b723cf961d3e?ixlib=rb-1.2.1&auto=format&fit=crop&w=1350&q=80') no-repeat center center;
+            background-size: cover;
+            background-attachment: fixed;
+        }
+
+        h1 {
+            color: #2a5885;
+            text-align: center;
+            margin-bottom: 30px;
+        }
+
+        .container {
+            background: rgba(255, 255, 255, 0.92);
+            border-radius: 15px;
+            padding: 30px;
+            box-shadow: 0 8px 32px rgba(0, 0, 0, 0.1);
+            backdrop-filter: blur(2px);
+            border: 1px solid rgba(255, 255, 255, 0.3);
+            max-width: 800px;
+            width: 100%;
+        }
+
+        .location-selector {
+            margin-bottom: 25px;
+        }
+
+        select {
+            width: 100%;
+            padding: 12px;
+            border: 1px solid #ddd;
+            border-radius: 5px;
+            font-size: 16px;
+            background-color: #f9f9f9;
+        }
+
+        .temperature-display {
+            text-align: center;
+            padding: 30px 0;
+        }
+
+        .temperature {
+            font-size: 48px;
+            font-weight: bold;
+            color: #2a5885;
+        }
+
+        .location {
+            font-size: 24px;
+            margin-top: 10px;
+            color: #555;
+        }
+
+        .last-update {
+            text-align: center;
+            color: #777;
+            font-size: 14px;
+            margin-top: 20px;
+        }
+
+        .map-link {
+            display: block;
+            text-align: center;
+            margin-top: 20px;
+            color: #2a5885;
+            text-decoration: none;
+        }
+
+        .map-link:hover {
+            text-decoration: underline;
+        }
+    </style>
+</head>
+
+<body>
+    <div class="container">
+        <h1>Температура воды в Рижском заливе</h1>
+
+        <div class="location-selector">
+            <select id="location-select">
+                <option value="">Выберите населённый пункт</option>
+                <option value="riga">Рига</option>
+                <option value="jurmala">Юрмала (Майори)</option>
+                <option value="saulkrasti">Саулкрасты</option>
+                <option value="varnukrogs">Варнукрогс (Лиелупе)</option>
+                <option value="ainazi">Айнажи</option>
+                <option value="pavilosta">Павилоста</option>
+                <option value="liepaja">Лиепая</option>
+                <option value="jurkalne">Юркалне</option>
+            </select>
+        </div>
+
+        <div class="temperature-display">
+            <div class="temperature" id="temperature">--°C</div>
+            <div class="location" id="location-name">Выберите локацию</div>
+        </div>
+
+        <a href="#" id="map-link" class="map-link">Посмотреть на карте</a>
+
+        <div class="last-update" id="last-update">
+            Данные обновляются автоматически
+        </div>
+    </div>
+
+    <script>
+        const LOCATIONS = {
+            riga: { lat: 56.95, lon: 24.1, name: "Рига" },
+            jurmala: { lat: 56.96, lon: 23.77, name: "Юрмала" },
+            saulkrasti: { lat: 57.2665, lon: 24.41, name: "Саулкрасты" },
+            varnukrogs: { lat: 56.9837, lon: 23.9349, name: "Варнукрогс (Лиелупе)" },
+            ainazi: { lat: 57.8519, lon: 24.3435, name: "Айнажи" },
+            pavilosta: { lat: 56.8889, lon: 21.1644, name: "Павилоста" },
+            liepaja: { lat: 56.4987, lon: 20.9930, name: "Лиепая" },
+            jurkalne: { lat: 57.0074, lon: 21.3781, name: "Юркалне" },
+
+            // ... остальные локации
+        };
+
+        // Состояние приложения
+        const state = {
+            currentLocation: null
+        };
+
+        async function getSeaTemperature(lat, lon) {
+            const params = {
+                "latitude": lat,
+                "longitude": lon,
+                "hourly": "sea_surface_temperature"
+            };
+
+            try {
+                const url = new URL("https://marine-api.open-meteo.com/v1/marine");
+                Object.entries(params).forEach(([key, value]) => {
+                    url.searchParams.append(key, value);
+                });
+
+                const response = await fetch(url);
+                if (!response.ok) throw new Error(`Ошибка HTTP: ${response.status}`);
+
+                const data = await response.json();
+
+                if (data.hourly?.sea_surface_temperature) {
+                    const temps = data.hourly.sea_surface_temperature;
+                    return temps[temps.length - 1];
+                }
+
+                return null;
+            } catch (error) {
+                console.error("Ошибка:", error);
+                return null;
+            }
+        }
+
+        // Остальной код обработки DOM остается без изменений
+        const select = document.getElementById('location-select');
+        const tempDisplay = document.getElementById('temperature');
+        const locationDisplay = document.getElementById('location-name');
+        const updateDisplay = document.getElementById('last-update');
+        const mapLink = document.getElementById('map-link');
+
+        let currentLocation = null;
+
+        select.addEventListener('change', async function () {
+            const selectedValue = this.value;
+
+            if (selectedValue && LOCATIONS[selectedValue]) {
+                currentLocation = selectedValue;
+                tempDisplay.textContent = 'Загрузка...';
+                locationDisplay.textContent = LOCATIONS[selectedValue].name;
+
+                const temp = await getSeaTemperature(
+                    LOCATIONS[selectedValue].lat,
+                    LOCATIONS[selectedValue].lon
+                );
+
+                if (temp !== null) {
+                    tempDisplay.textContent = `${temp.toFixed(1)}°C`;
+                    updateDisplay.textContent = `Обновлено: ${new Date().toLocaleTimeString()}`;
+                } else {
+                    currentLocation = null;
+                    tempDisplay.textContent = 'Нет данных';
+                    locationDisplay.textContent = 'Выберите локацию'
+                }
+            }
+        });
+
+        // Обработчик клика по карте
+        mapLink.addEventListener('click', function (e) {
+            e.preventDefault();
+
+            if (currentLocation && LOCATIONS[currentLocation]) {
+                const { lat, lon, name } = LOCATIONS[currentLocation];
+                // Открываем Google Maps с меткой
+                window.open(
+                    `https://www.google.com/maps/place/${name}/@${lat},${lon},12z`,
+                    '_blank'
+                );
+            } else {
+                alert('Пожалуйста, сначала выберите локацию из списка');
+            }
+        });
+    </script>
+</body>
+
+</html>
