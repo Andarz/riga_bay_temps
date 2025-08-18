@@ -39,17 +39,34 @@
             width: 100%;
         }
 
-        .location-selector {
-            margin-bottom: 25px;
-        }
-
-        select {
+        /* Новый стиль для поиска */
+        #search-box {
             width: 100%;
             padding: 12px;
             border: 1px solid #ddd;
             border-radius: 5px;
             font-size: 16px;
             background-color: #f9f9f9;
+        }
+
+        #suggestions {
+            list-style: none;
+            padding: 0;
+            margin: 5px 0 20px 0;
+            border: 1px solid #ddd;
+            border-radius: 5px;
+            max-height: 150px;
+            overflow-y: auto;
+            background: #fff;
+        }
+
+        #suggestions li {
+            padding: 10px;
+            cursor: pointer;
+        }
+
+        #suggestions li:hover {
+            background-color: #f0f0f0;
         }
 
         .temperature-display {
@@ -94,22 +111,9 @@
     <div class="container">
         <h1>Температура воды в Рижском заливе</h1>
 
-        <div class="location-selector">
-            <select id="location-select">
-                <option value="">Выберите населённый пункт</option>
-                <option value="riga">Рига (Краста)</option>
-                <option value="jurmala">Юрмала (Майори)</option>
-                <option value="saulkrasti">Саулкрасты</option>
-                <option value="varnukrogs">Варнукрогс (Лиелупе)</option>
-                <option value="ainazi">Айнажи</option>
-                <option value="pavilosta">Павилоста</option>
-                <option value="liepaja">Лиепая</option>
-                <option value="jurkalne">Юркалне</option>
-                <option value="zlatni_pjasici">Золотые пески</option>
-                <option value="vecaki">Вецаки</option>
-                <option value="carnikava">Царникава</option>
-            </select>
-        </div>
+        <!-- ЗДЕСЬ ВСТАВЛЯЕМ ПОИСК -->
+        <input type="text" id="search-box" placeholder="Введите локацию...">
+        <ul id="suggestions"></ul>
 
         <div class="temperature-display">
             <div class="temperature" id="temperature">--°C</div>
@@ -124,27 +128,7 @@
     </div>
 
     <script>
-        const LOCATIONS = {
-            riga: { lat: 56.9271, lon: 24.1541, name: "Рига (Краста)" },
-            jurmala: { lat: 56.96, lon: 23.77, name: "Юрмала" },
-            saulkrasti: { lat: 57.2665, lon: 24.41, name: "Саулкрасты" },
-            varnukrogs: { lat: 56.9837, lon: 23.9349, name: "Варнукрогс (Лиелупе)" },
-            ainazi: { lat: 57.8519, lon: 24.3435, name: "Айнажи" },
-            pavilosta: { lat: 56.8889, lon: 21.1644, name: "Павилоста" },
-            liepaja: { lat: 56.4987, lon: 20.9930, name: "Лиепая" },
-            jurkalne: { lat: 57.0074, lon: 21.3781, name: "Юркалне" },
-            zlatni_pjasici: { lat: 43.2856, lon: 28.0459, name: "Золотые пески" },
-            vecaki: { lat: 57.0816, lon: 24.1041, name: "Вецаки" },
-            carnikava: { lat: 57.1406, lon: 24.2378, name: "Царникава" },
-
-            // ... остальные локации
-        };
-
-        // Состояние приложения
-        const state = {
-            currentLocation: null
-        };
-
+        // Функция получения температуры остаётся без изменений
         async function getSeaTemperature(lat, lon) {
             const params = {
                 "latitude": lat,
@@ -175,52 +159,56 @@
             }
         }
 
-        // Остальной код обработки DOM остается без изменений
-        const select = document.getElementById('location-select');
-        const tempDisplay = document.getElementById('temperature');
-        const locationDisplay = document.getElementById('location-name');
-        const updateDisplay = document.getElementById('last-update');
-        const mapLink = document.getElementById('map-link');
-
+        // ======== ПОИСК ЛОКАЦИИ ========
+        const searchBox = document.getElementById('search-box');
+        const suggestions = document.getElementById('suggestions');
         let currentLocation = null;
 
-        select.addEventListener('change', async function () {
-            const selectedValue = this.value;
+        searchBox.addEventListener('input', async function () {
+            const query = this.value.trim();
+            if (query.length < 3) return; // ждем хотя бы 3 символа
 
-            if (selectedValue && LOCATIONS[selectedValue]) {
-                currentLocation = selectedValue;
-                tempDisplay.textContent = 'Загрузка...';
-                locationDisplay.textContent = LOCATIONS[selectedValue].name;
+            const url = `https://nominatim.openstreetmap.org/search?format=json&q=${encodeURIComponent(query)}&limit=5`;
 
-                const temp = await getSeaTemperature(
-                    LOCATIONS[selectedValue].lat,
-                    LOCATIONS[selectedValue].lon
-                );
+            const res = await fetch(url, { headers: { 'User-Agent': 'SeaTempApp/1.0' } });
+            const data = await res.json();
 
-                if (temp !== null) {
-                    tempDisplay.textContent = `${temp.toFixed(1)}°C`;
-                    updateDisplay.textContent = `Обновлено: ${new Date().toLocaleTimeString()}`;
-                } else {
-                    currentLocation = null;
-                    tempDisplay.textContent = 'Нет данных';
-                    locationDisplay.textContent = 'Выберите локацию'
-                }
-            }
+            suggestions.innerHTML = "";
+            data.forEach(place => {
+                const li = document.createElement("li");
+                li.textContent = place.display_name;
+                li.addEventListener("click", async () => {
+                    searchBox.value = place.display_name;
+                    suggestions.innerHTML = "";
+
+                    const lat = parseFloat(place.lat);
+                    const lon = parseFloat(place.lon);
+
+                    const temp = await getSeaTemperature(lat, lon);
+                    document.getElementById("temperature").textContent = temp ? `${temp.toFixed(1)}°C` : "Нет данных";
+                    document.getElementById("location-name").textContent = place.display_name;
+
+                    // сохраняем текущую локацию для карты
+                    currentLocation = { lat, lon, name: place.display_name };
+                    document.getElementById("last-update").textContent = `Обновлено: ${new Date().toLocaleTimeString()}`;
+                });
+                suggestions.appendChild(li);
+            });
         });
 
-        // Обработчик клика по карте
+        // ======== КНОПКА КАРТЫ ========
+        const mapLink = document.getElementById('map-link');
         mapLink.addEventListener('click', function (e) {
             e.preventDefault();
 
-            if (currentLocation && LOCATIONS[currentLocation]) {
-                const { lat, lon, name } = LOCATIONS[currentLocation];
-                // Открываем Google Maps с меткой
+            if (currentLocation) {
+                const { lat, lon, name } = currentLocation;
                 window.open(
                     `https://www.google.com/maps/place/${name}/@${lat},${lon},12z`,
                     '_blank'
                 );
             } else {
-                alert('Пожалуйста, сначала выберите локацию из списка');
+                alert('Пожалуйста, сначала выберите локацию');
             }
         });
     </script>
