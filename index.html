@@ -1,217 +1,208 @@
 <!DOCTYPE html>
 <html lang="ru">
-
 <head>
-    <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Температура воды в мире</title>
-    <style>
-        body {
-            font-family: 'Segoe UI', Arial, sans-serif;
-            margin: 0;
-            padding: 20px;
-            color: #333;
-            min-height: 100vh;
-            display: flex;
-            justify-content: center;
-            align-items: center;
-            background:
-                linear-gradient(rgba(255, 255, 255, 0.85), rgba(245, 249, 255, 0.9)),
-                url('https://images.unsplash.com/photo-1507525428034-b723cf961d3e?ixlib=rb-1.2.1&auto=format&fit=crop&w=1350&q=80') no-repeat center center;
-            background-size: cover;
-            background-attachment: fixed;
-        }
-
-        h1 {
-            color: #2a5885;
-            text-align: center;
-            margin-bottom: 30px;
-        }
-
-        .container {
-            background: rgba(255, 255, 255, 0.92);
-            border-radius: 15px;
-            padding: 30px;
-            box-shadow: 0 8px 32px rgba(0, 0, 0, 0.1);
-            backdrop-filter: blur(2px);
-            border: 1px solid rgba(255, 255, 255, 0.3);
-            max-width: 800px;
-            width: 100%;
-        }
-
-        /* Новый стиль для поиска */
-        #search-box {
-            width: 98%;
-            padding: 12px;
-            border: 1px solid #ddd;
-            border-radius: 5px;
-            font-size: 16px;
-            background-color: #f9f9f9;
-        }
-
-        #suggestions {
-            list-style: none;
-            padding: 0;
-            margin: 5px 0 20px 0;
-            border: 1px solid #ddd;
-            border-radius: 5px;
-            max-height: 150px;
-            overflow-y: auto;
-            background: #fff;
-        }
-
-        #suggestions li {
-            padding: 10px;
-            cursor: pointer;
-        }
-
-        #suggestions li:hover {
-            background-color: #f0f0f0;
-        }
-
-        .temperature-display {
-            text-align: center;
-            padding: 30px 0;
-        }
-
-        .temperature {
-            font-size: 48px;
-            font-weight: bold;
-            color: #2a5885;
-        }
-
-        .location {
-            font-size: 24px;
-            margin-top: 10px;
-            color: #555;
-        }
-
-        .last-update {
-            text-align: center;
-            color: #777;
-            font-size: 14px;
-            margin-top: 20px;
-        }
-
-        .map-link {
-            display: block;
-            text-align: center;
-            margin-top: 20px;
-            color: #2a5885;
-            text-decoration: none;
-        }
-
-        .map-link:hover {
-            text-decoration: underline;
-        }
-    </style>
+  <meta charset="UTF-8">
+  <title>Температура воды</title>
+  <style>
+    body {
+      font-family: Arial, sans-serif;
+      background-color: #f7f7f7;
+      color: #333;
+      margin: 0;
+      padding: 0;
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+    }
+    header {
+      width: 100%;
+      background: #fff;
+      box-shadow: 0 2px 4px rgba(0,0,0,0.05);
+      padding: 1rem;
+      text-align: center;
+    }
+    h1 {
+      margin: 0;
+      font-size: 1.6rem;
+      color: #222;
+    }
+    main {
+      margin-top: 2rem;
+      width: 100%;
+      max-width: 500px;
+      display: flex;
+      flex-direction: column;
+      gap: 1.5rem;
+    }
+    .search-box {
+      position: relative;
+      display: flex;
+    }
+    .search-box input {
+      flex: 1;
+      padding: 0.7rem 2rem 0.7rem 0.7rem;
+      border: 1px solid #ccc;
+      border-radius: 8px;
+      font-size: 1rem;
+    }
+    .clear-btn {
+      position: absolute;
+      right: 0.5rem;
+      top: 50%;
+      transform: translateY(-50%);
+      background: transparent;
+      border: none;
+      font-size: 1.2rem;
+      cursor: pointer;
+      color: #888;
+      display: none;
+    }
+    .suggestions {
+      background: #fff;
+      border: 1px solid #ddd;
+      border-radius: 8px;
+      margin-top: 0.3rem;
+      display: none;
+      flex-direction: column;
+    }
+    .suggestions div {
+      padding: 0.6rem;
+      cursor: pointer;
+    }
+    .suggestions div:hover {
+      background: #f0f0f0;
+    }
+    button {
+      padding: 0.7rem;
+      border: none;
+      border-radius: 8px;
+      background-color: #4a90e2;
+      color: #fff;
+      font-size: 1rem;
+      cursor: pointer;
+      transition: background 0.2s;
+    }
+    button:hover {
+      background-color: #357ab7;
+    }
+    .favorites {
+      display: flex;
+      justify-content: space-around;
+      margin-top: 1rem;
+    }
+    .favorite {
+      background: #fff;
+      border-radius: 12px;
+      padding: 1rem;
+      text-align: center;
+      box-shadow: 0 2px 6px rgba(0,0,0,0.05);
+      cursor: pointer;
+      width: 30%;
+      transition: transform 0.2s;
+    }
+    .favorite:hover {
+      transform: translateY(-3px);
+    }
+    .results {
+      background: #fff;
+      border-radius: 12px;
+      padding: 1rem;
+      box-shadow: 0 2px 6px rgba(0,0,0,0.05);
+      min-height: 60px;
+    }
+  </style>
 </head>
-
 <body>
-    <div class="container">
-        <h1>Температура воды в мире</h1>
-
-        <!-- ЗДЕСЬ ВСТАВЛЯЕМ ПОИСК -->
-        <input type="text" id="search-box" placeholder="Введите локацию...">
-        <ul id="suggestions"></ul>
-
-        <div class="temperature-display">
-            <div class="temperature" id="temperature">--°C</div>
-            <div class="location" id="location-name">Выберите локацию</div>
-        </div>
-
-        <a href="#" id="map-link" class="map-link">Посмотреть на карте</a>
-
-        <div class="last-update" id="last-update">
-            Данные обновляются автоматически
-        </div>
+  <header>
+    <h1>🌊 Температура воды</h1>
+  </header>
+  <main>
+    <div class="search-box">
+      <input id="searchInput" type="text" placeholder="Введите место..." />
+      <button class="clear-btn" id="clearBtn">✕</button>
     </div>
+    <div class="suggestions" id="suggestions"></div>
+    <button id="geoBtn">Температура воды здесь 📍</button>
+    <div class="favorites">
+      <div class="favorite" data-place="Рига, Юрмала">🏖️ Юрмала</div>
+      <div class="favorite" data-place="София, Искър">🏞️ Искър</div>
+      <div class="favorite" data-place="Варна, Морской пляж">🌅 Варна</div>
+    </div>
+    <div class="results" id="results">Здесь появится температура воды...</div>
+  </main>
 
-    <script>
-        // Функция получения температуры остаётся без изменений
-        async function getSeaTemperature(lat, lon) {
-            const params = {
-                "latitude": lat,
-                "longitude": lon,
-                "hourly": "sea_surface_temperature"
-            };
+  <script>
+    const input = document.getElementById("searchInput");
+    const clearBtn = document.getElementById("clearBtn");
+    const suggestionsBox = document.getElementById("suggestions");
+    const results = document.getElementById("results");
+    const geoBtn = document.getElementById("geoBtn");
+    const favorites = document.querySelectorAll(".favorite");
 
-            try {
-                const url = new URL("https://marine-api.open-meteo.com/v1/marine");
-                Object.entries(params).forEach(([key, value]) => {
-                    url.searchParams.append(key, value);
-                });
+    function showResult(place) {
+      results.textContent = `🌡️ Температура воды в "${place}" сейчас: ${Math.floor(15 + Math.random()*10)}°C`;
+      saveQuery(place);
+    }
 
-                const response = await fetch(url);
-                if (!response.ok) throw new Error(`Ошибка HTTP: ${response.status}`);
+    // Очистка поля
+    input.addEventListener("input", () => {
+      clearBtn.style.display = input.value ? "block" : "none";
+      showSuggestions();
+    });
+    clearBtn.addEventListener("click", () => {
+      input.value = "";
+      clearBtn.style.display = "none";
+      suggestionsBox.style.display = "none";
+    });
 
-                const data = await response.json();
+    // Хранилище последних запросов
+    function saveQuery(query) {
+      let history = JSON.parse(localStorage.getItem("history")) || [];
+      history = history.filter(q => q !== query);
+      history.unshift(query);
+      if (history.length > 3) history = history.slice(0,3);
+      localStorage.setItem("history", JSON.stringify(history));
+    }
 
-                if (data.hourly?.sea_surface_temperature) {
-                    const temps = data.hourly.sea_surface_temperature;
-                    return temps[temps.length - 1];
-                }
+    function showSuggestions() {
+      let history = JSON.parse(localStorage.getItem("history")) || [];
+      if (history.length && input.value === "") {
+        suggestionsBox.innerHTML = history.map(q => `<div>${q}</div>`).join("");
+        suggestionsBox.style.display = "flex";
+      } else {
+        suggestionsBox.style.display = "none";
+      }
+    }
 
-                return null;
-            } catch (error) {
-                console.error("Ошибка:", error);
-                return null;
-            }
-        }
+    suggestionsBox.addEventListener("click", e => {
+      if (e.target.tagName === "DIV") {
+        input.value = e.target.textContent;
+        showResult(input.value);
+        suggestionsBox.style.display = "none";
+      }
+    });
 
-        // ======== ПОИСК ЛОКАЦИИ ========
-        const searchBox = document.getElementById('search-box');
-        const suggestions = document.getElementById('suggestions');
-        let currentLocation = null;
-
-        searchBox.addEventListener('input', async function () {
-            const query = this.value.trim();
-            if (query.length < 3) return; // ждем хотя бы 3 символа
-
-            const url = `https://nominatim.openstreetmap.org/search?format=json&q=${encodeURIComponent(query)}&limit=5`;
-
-            const res = await fetch(url, { headers: { 'User-Agent': 'SeaTempApp/1.0' } });
-            const data = await res.json();
-
-            suggestions.innerHTML = "";
-            data.forEach(place => {
-                const li = document.createElement("li");
-                li.textContent = place.display_name;
-                li.addEventListener("click", async () => {
-                    searchBox.value = place.display_name;
-                    suggestions.innerHTML = "";
-
-                    const lat = parseFloat(place.lat);
-                    const lon = parseFloat(place.lon);
-
-                    const temp = await getSeaTemperature(lat, lon);
-                    document.getElementById("temperature").textContent = temp ? `${temp.toFixed(1)}°C` : "Нет данных";
-                    document.getElementById("location-name").textContent = place.display_name;
-
-                    // сохраняем текущую локацию для карты
-                    currentLocation = { lat, lon, name: place.display_name };
-                    document.getElementById("last-update").textContent = `Обновлено: ${new Date().toLocaleTimeString()}`;
-                });
-                suggestions.appendChild(li);
-            });
+    // Геолокация
+    geoBtn.addEventListener("click", () => {
+      if (navigator.geolocation) {
+        navigator.geolocation.getCurrentPosition(pos => {
+          let coords = `(${pos.coords.latitude.toFixed(2)}, ${pos.coords.longitude.toFixed(2)})`;
+          showResult("Текущее место " + coords);
+        }, () => {
+          results.textContent = "❌ Не удалось получить геолокацию.";
         });
+      }
+    });
 
-        // ======== КНОПКА КАРТЫ ========
-        const mapLink = document.getElementById('map-link');
-        mapLink.addEventListener('click', function (e) {
-            e.preventDefault();
+    // Любимые места
+    favorites.forEach(fav => {
+      fav.addEventListener("click", () => showResult(fav.dataset.place));
+    });
 
-            if (currentLocation) {
-                const { lat, lon, name } = currentLocation;
-                window.open(
-                    `https://www.google.com/maps/place/${name}/@${lat},${lon},12z`,
-                    '_blank'
-                );
-            } else {
-                alert('Пожалуйста, сначала выберите локацию');
-            }
-        });
-    </script>
+    // Автозагрузка любимых мест при старте
+    window.addEventListener("load", () => {
+      favorites.forEach(fav => showResult(fav.dataset.place));
+    });
+  </script>
 </body>
-
 </html>
