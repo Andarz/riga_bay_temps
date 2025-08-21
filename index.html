@@ -2,206 +2,227 @@
 <html lang="ru">
 <head>
   <meta charset="UTF-8">
-  <title>Температура воды</title>
+  <title>Погода с геопоиском</title>
   <style>
     body {
-      font-family: Arial, sans-serif;
-      background-color: #f7f7f7;
+      font-family: "Segoe UI", Arial, sans-serif;
+      background: #f0f4f7;
       color: #333;
-      margin: 0;
-      padding: 0;
       display: flex;
-      flex-direction: column;
-      align-items: center;
+      justify-content: center;
+      padding: 40px;
     }
-    header {
-      width: 100%;
+    .app {
       background: #fff;
-      box-shadow: 0 2px 4px rgba(0,0,0,0.05);
-      padding: 1rem;
-      text-align: center;
+      padding: 24px;
+      border-radius: 20px;
+      box-shadow: 0 8px 20px rgba(0,0,0,0.1);
+      width: 400px;
+      max-width: 100%;
     }
     h1 {
-      margin: 0;
-      font-size: 1.6rem;
-      color: #222;
-    }
-    main {
-      margin-top: 2rem;
-      width: 100%;
-      max-width: 500px;
-      display: flex;
-      flex-direction: column;
-      gap: 1.5rem;
+      font-size: 20px;
+      margin-bottom: 16px;
+      text-align: center;
     }
     .search-box {
       position: relative;
       display: flex;
+      margin-bottom: 12px;
     }
     .search-box input {
       flex: 1;
-      padding: 0.7rem 2rem 0.7rem 0.7rem;
+      padding: 10px 36px 10px 12px;
+      border-radius: 12px;
       border: 1px solid #ccc;
-      border-radius: 8px;
-      font-size: 1rem;
+      outline: none;
+      font-size: 14px;
     }
     .clear-btn {
       position: absolute;
-      right: 0.5rem;
+      right: 10px;
       top: 50%;
       transform: translateY(-50%);
-      background: transparent;
-      border: none;
-      font-size: 1.2rem;
       cursor: pointer;
+      font-size: 16px;
       color: #888;
       display: none;
     }
-    .suggestions {
+    .search-suggestions {
+      position: absolute;
+      top: 110%;
+      left: 0;
+      right: 0;
       background: #fff;
       border: 1px solid #ddd;
-      border-radius: 8px;
-      margin-top: 0.3rem;
+      border-radius: 12px;
+      box-shadow: 0 4px 12px rgba(0,0,0,0.05);
       display: none;
-      flex-direction: column;
+      z-index: 10;
     }
-    .suggestions div {
-      padding: 0.6rem;
+    .search-suggestions div {
+      padding: 8px 12px;
       cursor: pointer;
     }
-    .suggestions div:hover {
-      background: #f0f0f0;
+    .search-suggestions div:hover {
+      background: #f2f2f2;
     }
     button {
-      padding: 0.7rem;
-      border: none;
-      border-radius: 8px;
-      background-color: #4a90e2;
+      background: #4a90e2;
       color: #fff;
-      font-size: 1rem;
+      border: none;
+      border-radius: 12px;
+      padding: 10px;
       cursor: pointer;
-      transition: background 0.2s;
+      font-size: 14px;
+      width: 100%;
+      margin-bottom: 16px;
     }
     button:hover {
-      background-color: #357ab7;
+      background: #357abd;
+    }
+    .result {
+      background: #f9fafb;
+      padding: 14px;
+      border-radius: 12px;
+      margin-bottom: 20px;
+      display: none;
+    }
+    .result h2 {
+      margin: 0 0 6px;
+      font-size: 18px;
+    }
+    .result a {
+      font-size: 13px;
+      color: #4a90e2;
+      text-decoration: none;
+    }
+    .result a:hover {
+      text-decoration: underline;
     }
     .favorites {
       display: flex;
       justify-content: space-around;
-      margin-top: 1rem;
+      margin-top: 16px;
     }
     .favorite {
-      background: #fff;
-      border-radius: 12px;
-      padding: 1rem;
-      text-align: center;
-      box-shadow: 0 2px 6px rgba(0,0,0,0.05);
+      display: flex;
+      flex-direction: column;
+      align-items: center;
       cursor: pointer;
-      width: 30%;
-      transition: transform 0.2s;
+      font-size: 13px;
+      color: #333;
     }
-    .favorite:hover {
-      transform: translateY(-3px);
-    }
-    .results {
-      background: #fff;
-      border-radius: 12px;
-      padding: 1rem;
-      box-shadow: 0 2px 6px rgba(0,0,0,0.05);
-      min-height: 60px;
+    .favorite-icon {
+      width: 36px;
+      height: 36px;
+      border-radius: 50%;
+      background: #e6ecf2;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      margin-bottom: 6px;
+      font-size: 18px;
     }
   </style>
 </head>
 <body>
-  <header>
-    <h1>🌊 Температура воды</h1>
-  </header>
-  <main>
+  <div class="app">
+    <h1>Погода</h1>
+
     <div class="search-box">
-      <input id="searchInput" type="text" placeholder="Введите место..." />
-      <button class="clear-btn" id="clearBtn">✕</button>
+      <input type="text" id="search" placeholder="Введите город...">
+      <span class="clear-btn" id="clear">×</span>
+      <div class="search-suggestions" id="suggestions"></div>
     </div>
-    <div class="suggestions" id="suggestions"></div>
-    <button id="geoBtn">Температура воды здесь 📍</button>
+
+    <button id="geoBtn">Температура здесь 🌍</button>
+
+    <div class="result" id="result">
+      <h2 id="city"></h2>
+      <p id="temp"></p>
+      <a id="mapLink" target="_blank">Открыть на карте</a>
+    </div>
+
     <div class="favorites">
-      <div class="favorite" data-place="Рига, Юрмала">🏖️ Юрмала</div>
-      <div class="favorite" data-place="София, Искър">🏞️ Искър</div>
-      <div class="favorite" data-place="Варна, Морской пляж">🌅 Варна</div>
+      <div class="favorite" data-city="Рига">
+        <div class="favorite-icon">🏙️</div>
+        Рига
+      </div>
+      <div class="favorite" data-city="София">
+        <div class="favorite-icon">⛰️</div>
+        София
+      </div>
+      <div class="favorite" data-city="Варнукрогс">
+        <div class="favorite-icon">🏖️</div>
+        Варнукрогс
+      </div>
     </div>
-    <div class="results" id="results">Здесь появится температура воды...</div>
-  </main>
+  </div>
 
   <script>
-    const input = document.getElementById("searchInput");
-    const clearBtn = document.getElementById("clearBtn");
+    const searchInput = document.getElementById("search");
+    const clearBtn = document.getElementById("clear");
     const suggestionsBox = document.getElementById("suggestions");
-    const results = document.getElementById("results");
-    const geoBtn = document.getElementById("geoBtn");
-    const favorites = document.querySelectorAll(".favorite");
+    const resultBox = document.getElementById("result");
+    const cityEl = document.getElementById("city");
+    const tempEl = document.getElementById("temp");
+    const mapLink = document.getElementById("mapLink");
 
-    function showResult(place) {
-      results.textContent = `🌡️ Температура воды в "${place}" сейчас: ${Math.floor(15 + Math.random()*10)}°C`;
-      saveQuery(place);
+    let history = [];
+
+    function showWeather(city) {
+      // Здесь будет запрос к API
+      cityEl.textContent = city;
+      tempEl.textContent = "Температура: " + (Math.round(Math.random()*15+10)) + "°C";
+      mapLink.href = "https://www.google.com/maps/search/?api=1&query=" + encodeURIComponent(city);
+      resultBox.style.display = "block";
+
+      history.unshift(city);
+      history = history.slice(0,3);
     }
 
-    // Очистка поля
-    input.addEventListener("input", () => {
-      clearBtn.style.display = input.value ? "block" : "none";
-      showSuggestions();
-    });
-    clearBtn.addEventListener("click", () => {
-      input.value = "";
-      clearBtn.style.display = "none";
-      suggestionsBox.style.display = "none";
+    searchInput.addEventListener("input", () => {
+      clearBtn.style.display = searchInput.value ? "block" : "none";
     });
 
-    // Хранилище последних запросов
-    function saveQuery(query) {
-      let history = JSON.parse(localStorage.getItem("history")) || [];
-      history = history.filter(q => q !== query);
-      history.unshift(query);
-      if (history.length > 3) history = history.slice(0,3);
-      localStorage.setItem("history", JSON.stringify(history));
-    }
+    searchInput.addEventListener("focus", () => {
+      if (history.length > 0) {
+        suggestionsBox.innerHTML = history.map(h => `<div>${h}</div>`).join("");
+        suggestionsBox.style.display = "block";
+      }
+    });
 
-    function showSuggestions() {
-      let history = JSON.parse(localStorage.getItem("history")) || [];
-      if (history.length && input.value === "") {
-        suggestionsBox.innerHTML = history.map(q => `<div>${q}</div>`).join("");
-        suggestionsBox.style.display = "flex";
-      } else {
+    document.addEventListener("click", e => {
+      if (!searchInput.contains(e.target)) {
         suggestionsBox.style.display = "none";
       }
-    }
+    });
 
     suggestionsBox.addEventListener("click", e => {
       if (e.target.tagName === "DIV") {
-        input.value = e.target.textContent;
-        showResult(input.value);
+        searchInput.value = e.target.textContent;
+        showWeather(e.target.textContent);
         suggestionsBox.style.display = "none";
       }
     });
 
-    // Геолокация
-    geoBtn.addEventListener("click", () => {
-      if (navigator.geolocation) {
-        navigator.geolocation.getCurrentPosition(pos => {
-          let coords = `(${pos.coords.latitude.toFixed(2)}, ${pos.coords.longitude.toFixed(2)})`;
-          showResult("Текущее место " + coords);
-        }, () => {
-          results.textContent = "❌ Не удалось получить геолокацию.";
-        });
-      }
+    clearBtn.addEventListener("click", () => {
+      searchInput.value = "";
+      clearBtn.style.display = "none";
     });
 
-    // Любимые места
-    favorites.forEach(fav => {
-      fav.addEventListener("click", () => showResult(fav.dataset.place));
+    document.getElementById("geoBtn").addEventListener("click", () => {
+      navigator.geolocation.getCurrentPosition(pos => {
+        const { latitude, longitude } = pos.coords;
+        showWeather(`(${latitude.toFixed(2)}, ${longitude.toFixed(2)})`);
+      });
     });
 
-    // Автозагрузка любимых мест при старте
-    window.addEventListener("load", () => {
-      favorites.forEach(fav => showResult(fav.dataset.place));
+    document.querySelectorAll(".favorite").forEach(fav => {
+      fav.addEventListener("click", () => {
+        showWeather(fav.dataset.city);
+      });
     });
   </script>
 </body>
