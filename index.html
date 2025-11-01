@@ -198,19 +198,82 @@
 
         // ======== КНОПКА КАРТЫ ========
         const mapLink = document.getElementById('map-link');
-        mapLink.addEventListener('click', function (e) {
-            e.preventDefault();
 
-            if (currentLocation) {
-                const { lat, lon, name } = currentLocation;
-                window.open(
-                    `https://www.google.com/maps/search/?api=1&query=${lat},${lon}`,
-                    '_blank'
-                );
-            } else {
-                alert('Пожалуйста, сначала выберите локацию');
-            }
-        });
+mapLink.addEventListener('click', function (e) {
+  e.preventDefault();
+
+  if (!currentLocation) {
+    alert('Пожалуйста, сначала выберите локацию');
+    return;
+  }
+
+  const lat = currentLocation.lat;
+  const lon = currentLocation.lon;
+  const label = currentLocation.name || '';
+
+  openMapForMobile(lat, lon, label);
+});
+
+function openMapForMobile(lat, lon, label = '') {
+  const latLon = `${lat},${lon}`;
+  const encLabel = encodeURIComponent(label);
+
+  const googleWeb = `https://www.google.com/maps/search/?api=1&query=${latLon}`;
+  const appleWeb = `https://maps.apple.com/?q=${latLon}`;
+  const appleMapsApp = `maps://?q=${latLon}`;
+  const geoAndroid = `geo:${latLon}?q=${latLon}(${encLabel})`;
+  const comGoogleMapsApp = `comgooglemaps://?q=${latLon}`;
+
+  const ua = navigator.userAgent || '';
+
+  // Универсальная попытка: сначала нативный URI, затем веб-фоллбек
+  if (/Android/i.test(ua)) {
+    // Попробовать geo: (Android) — ставит маркер точно по координатам
+    tryOpenUriWithFallback(geoAndroid, googleWeb);
+  } else if (/iPhone|iPad|iPod/i.test(ua)) {
+    // iOS: сначала Apple Maps scheme, если не сработает — веб Apple или Google
+    tryOpenUriWithFallback(appleMapsApp, appleWeb);
+  } else {
+    // Десктоп / неизвестное — открыть веб Google Maps
+    window.open(googleWeb, '_blank');
+  }
+}
+
+// Пытаемся перейти на URI; если приложение не сработает, через timeout делаем fallback
+function tryOpenUriWithFallback(uri, fallbackUrl) {
+  // Для большинства браузеров установка location.href попытается открыть схему.
+  // Если схема не поддерживается, через таймаут делаем переход на fallback.
+  const start = Date.now();
+  const timeout = 700; // ms — достаточно короткий, но даёт приложению шанс
+  let handled = false;
+
+  // Создаём невидимый iframe для некоторых старых Android браузеров (опционально)
+  const iframe = document.createElement('iframe');
+  iframe.style.display = 'none';
+  document.body.appendChild(iframe);
+
+  // Пытаемся открыть URI
+  try {
+    // Для большинства мобильных: location.href работает
+    window.location.href = uri;
+  } catch (err) {
+    // В некоторых окружениях try…catch может не сработать — пробуем iframe
+    try { iframe.src = uri; } catch (e) {}
+  }
+
+  // fallback через timeout
+  setTimeout(() => {
+    // Если через timeout прошло — переходим на fallback
+    // (если пользователь успел переключиться в приложение — это просто откроет веб-страницу, обычно ничего страшного)
+    if (Date.now() - start >= timeout) {
+      // Для iOS удобнее открывать maps.apple.com; для остальных — Google
+      window.location.href = fallbackUrl;
+    }
+    // cleanup
+    try { document.body.removeChild(iframe); } catch (e) {}
+  }, timeout);
+}
+
     </script>
 </body>
 
