@@ -204,7 +204,7 @@
             if (currentLocation) {
                 const { lat, lon, name } = currentLocation;
                 window.open(
-                    `https://www.google.com/maps/@${lat},${lon},12z`,
+                    `https://www.google.com/maps/search/?api=1&query=${lat},${lon}`,
                     '_blank'
                 );
             } else {
