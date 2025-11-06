@@ -207,6 +207,42 @@
     };
 }
 
+        async function findNearestWaterBody(lat, lon) {
+    const query = `
+        [out:json];
+        (
+            way(around:6000, ${lat}, ${lon})["natural"="water"];
+            way(around:6000, ${lat}, ${lon})["water"];
+            way(around:6000, ${lat}, ${lon})["waterway"];
+        );
+        out center 1;
+    `;
+
+    const res = await fetch("https://overpass-api.de/api/interpreter", {
+        method: "POST",
+        body: query
+    });
+
+    const json = await res.json();
+    if (!json.elements.length) return null;
+
+    // Берём ближайший водоём
+    json.elements.sort((a, b) => {
+        const d1 = (a.center.lat - lat) ** 2 + (a.center.lon - lon) ** 2;
+        const d2 = (b.center.lat - lat) ** 2 + (b.center.lon - lon) ** 2;
+        return d1 - d2;
+    });
+
+    const w = json.elements[0];
+
+    return {
+        name: w.tags.name || "Неизвестный водоём",
+        lat: w.center.lat,
+        lon: w.center.lon
+    };
+}
+
+
         // Находим ближайшую точку на воде (используем NOAA / Copernicus координатную сетку)
 async function findNearestWater(lat, lon) {
     // Округляем координаты к морской сетке 0.25 градуса
@@ -348,57 +384,27 @@ function tryOpenUriWithFallback(uri, fallbackUrl) {
   }, timeout);
 }
 
-        document.getElementById("nearest-water-btn").addEventListener("click", async () => {
-    try {
-        // Получаем геопозицию
-        navigator.geolocation.getCurrentPosition(async (pos) => {
-            const userLat = pos.coords.latitude;
-            const userLon = pos.coords.longitude;
+       document.getElementById("nearest-water-btn").addEventListener("click", () => {
+    navigator.geolocation.getCurrentPosition(async ({ coords }) => {
+        const water = await findNearestWaterBody(coords.latitude, coords.longitude);
+        if (!water) {
+            document.getElementById("location-name").textContent = "Рядом нет водоёмов";
+            return;
+        }
 
-            // Ищем ближайшие точки
-            const points = await findNearestWater(userLat, userLon);
+        const temp = await getSeaTemperature(water.lat, water.lon);
 
-            let nearestTemp = null;
-            let nearestPoint = null;
+        document.getElementById("temperature").textContent =
+            temp ? `${temp.toFixed(1)}°C` : "Нет данных";
 
-            for (let [lat, lon] of points) {
-                const temp = await getSeaTemperature(lat, lon);
-                if (temp && temp.temperature !== null) {
-                    nearestTemp = temp.temperature;
-                    nearestPoint = { lat, lon };
-                    break;
-                }
-                // маленькая пауза, чтобы не спамить API
-                await new Promise(r => setTimeout(r, 120));
-            }
+        document.getElementById("location-name").textContent = water.name;
+        document.getElementById("last-update").textContent =
+            `Обновлено: ${new Date().toLocaleTimeString()}`;
 
-            if (!nearestPoint) {
-                document.getElementById("location-name").textContent = "Нет данных по воде рядом";
-                document.getElementById("temperature").textContent = "-";
-                return;
-            }
-
-            // Получаем название водоёма
-            const place = await reverseGeocode(nearestPoint.lat, nearestPoint.lon);
-
-            // Выводим в интерфейс
-            document.getElementById("location-name").textContent = place.label;
-            document.getElementById("temperature").textContent = `${nearestTemp.toFixed(1)}°C`;
-            document.getElementById("last-update").textContent = `Обновлено: ${new Date().toLocaleTimeString()}`;
-
-            // Чтобы кнопка "Посмотреть на карте" показывала именно эту точку
-            currentLocation = {
-                lat: nearestPoint.lat,
-                lon: nearestPoint.lon,
-                name: place.label
-            };
-
-        }, () => alert("Геолокация отключена — включи её."));
-    } catch (err) {
-        console.error(err);
-        alert("Ошибка при определении температуры воды.");
-    }
+        currentLocation = water;
+    }, () => alert("Геолокация отключена."));
 });
+
 
 
     </script>
