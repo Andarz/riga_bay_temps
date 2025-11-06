@@ -171,6 +171,68 @@
             }
         }
 
+        async function reverseGeocode(lat, lon) {
+    const url = `https://nominatim.openstreetmap.org/reverse?format=json&lat=${lat}&lon=${lon}&zoom=12&addressdetails=1`;
+    const res = await fetch(url, { headers: { 'User-Agent': 'SeaTempApp/1.0' } });
+    const data = await res.json();
+
+    let name = data.display_name || "Неизвестное место";
+    let typeLabel = "";
+
+    const addr = data.address || {};
+
+    // Попытка определить тип водоёма
+    if (addr.ocean) {
+        typeLabel = `Океан: ${addr.ocean}`;
+    } else if (addr.sea) {
+        typeLabel = `Море: ${addr.sea}`;
+    } else if (addr.bay) {
+        typeLabel = `Залив: ${addr.bay}`;
+    } else if (addr.strait) {
+        typeLabel = `Пролив: ${addr.strait}`;
+    } else if (addr.lake) {
+        typeLabel = `Озеро: ${addr.lake}`;
+    } else if (addr.river) {
+        typeLabel = `Река: ${addr.river}`;
+    } else if (addr.water) {
+        typeLabel = `Водоём: ${addr.water}`;
+    } else {
+        // fallback — просто город/регион
+        typeLabel = name;
+    }
+
+    return {
+        label: typeLabel,
+        fullName: name
+    };
+}
+
+        // Находим ближайшую точку на воде (используем NOAA / Copernicus координатную сетку)
+async function findNearestWater(lat, lon) {
+    // Округляем координаты к морской сетке 0.25 градуса
+    const round = (value) => Math.round(value * 4) / 4;
+
+    const candidates = [];
+    for (let dLat = -1; dLat <= 1; dLat += 0.25) {
+        for (let dLon = -1; dLon <= 1; dLon += 0.25) {
+            candidates.push([round(lat + dLat), round(lon + dLon)]);
+        }
+    }
+
+    // Считаем расстояния → ищем ближайшую точку
+    function dist(a, b, c, d) {
+        return Math.sqrt((a - c) ** 2 + (b - d) ** 2);
+    }
+
+    candidates.sort((a, b) =>
+        dist(lat, lon, a[0], a[1]) - dist(lat, lon, b[0], b[1])
+    );
+
+    return candidates; // возвращаем список — проверим по очереди
+}
+
+
+
         // ======== ПОИСК ЛОКАЦИИ ========
         const searchBox = document.getElementById('search-box');
         const suggestions = document.getElementById('suggestions');
@@ -285,6 +347,59 @@ function tryOpenUriWithFallback(uri, fallbackUrl) {
     try { document.body.removeChild(iframe); } catch (e) {}
   }, timeout);
 }
+
+        document.getElementById("nearest-water-btn").addEventListener("click", async () => {
+    try {
+        // Получаем геопозицию
+        navigator.geolocation.getCurrentPosition(async (pos) => {
+            const userLat = pos.coords.latitude;
+            const userLon = pos.coords.longitude;
+
+            // Ищем ближайшие точки
+            const points = await findNearestWater(userLat, userLon);
+
+            let nearestTemp = null;
+            let nearestPoint = null;
+
+            for (let [lat, lon] of points) {
+                const temp = await getSeaTemperature(lat, lon);
+                if (temp && temp.temperature !== null) {
+                    nearestTemp = temp.temperature;
+                    nearestPoint = { lat, lon };
+                    break;
+                }
+                // маленькая пауза, чтобы не спамить API
+                await new Promise(r => setTimeout(r, 120));
+            }
+
+            if (!nearestPoint) {
+                document.getElementById("location-name").textContent = "Нет данных по воде рядом";
+                document.getElementById("temperature").textContent = "-";
+                return;
+            }
+
+            // Получаем название водоёма
+            const place = await reverseGeocode(nearestPoint.lat, nearestPoint.lon);
+
+            // Выводим в интерфейс
+            document.getElementById("location-name").textContent = place.label;
+            document.getElementById("temperature").textContent = `${nearestTemp.toFixed(1)}°C`;
+            document.getElementById("last-update").textContent = `Обновлено: ${new Date().toLocaleTimeString()}`;
+
+            // Чтобы кнопка "Посмотреть на карте" показывала именно эту точку
+            currentLocation = {
+                lat: nearestPoint.lat,
+                lon: nearestPoint.lon,
+                name: place.label
+            };
+
+        }, () => alert("Геолокация отключена — включи её."));
+    } catch (err) {
+        console.error(err);
+        alert("Ошибка при определении температуры воды.");
+    }
+});
+
 
     </script>
 </body>
